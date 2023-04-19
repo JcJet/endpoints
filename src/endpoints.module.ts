@@ -3,7 +3,7 @@ import { EndpointsController } from './endpoints.controller';
 import { EndpointsService } from './endpoints.service';
 import { ConfigModule } from '@nestjs/config';
 import { RmqModule } from '@app/common';
-import { PROFILES_SERVCE } from './constants/services';
+import { COMMENTS_SERVICE, PROFILES_SERVICE } from "./constants/services";
 
 @Module({
   imports: [
@@ -12,7 +12,10 @@ import { PROFILES_SERVCE } from './constants/services';
       envFilePath: '.env',
     }),
     RmqModule.register({
-      name: PROFILES_SERVCE,
+      name: PROFILES_SERVICE,
+    }),
+    RmqModule.register({
+      name: COMMENTS_SERVICE,
     }),
   ],
   controllers: [EndpointsController],
