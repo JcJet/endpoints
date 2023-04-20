@@ -7,20 +7,28 @@ import {
   Param,
   Post,
   Put,
-  Query,
-} from '@nestjs/common';
+  Query, UploadedFile, UseInterceptors
+} from "@nestjs/common";
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
-import { COMMENTS_SERVICE, PROFILES_SERVICE } from './constants/services';
+import {
+  COMMENTS_SERVICE,
+  FILES_SERVICE,
+  PROFILES_SERVICE,
+} from './constants/services';
 import { ProfileDto } from './dto/profile.dto';
 import { CommentaryDto } from './dto/commentary.dto';
 import { GetCommentaryDto } from './dto/getCommentary.dto';
+import { FileDto } from './dto/file.dto';
+import * as fs from 'fs';
+import { FileInterceptor } from "@nestjs/platform-express";
 
 @Controller('api')
 export class EndpointsController {
   constructor(
     @Inject(PROFILES_SERVICE) private profilesClient: ClientProxy,
     @Inject(COMMENTS_SERVICE) private commentsClient: ClientProxy,
+    @Inject(FILES_SERVICE) private filesClient: ClientProxy,
   ) {}
 
   // Эндпоинт для регистрации нового пользователя
@@ -103,6 +111,52 @@ export class EndpointsController {
   async delete_comment(@Param('id') id: number): Promise<CommentaryDto> {
     return await lastValueFrom(
       this.commentsClient.send('delete_comment', { id }),
+    );
+  }
+
+  // Эндпоинты для работы с файлами
+  @UseInterceptors(FileInterceptor('file'))
+  @Post('/files')
+  async create_file(
+    @Body() dto: FileDto,
+    @UploadedFile() file = undefined,
+  ): Promise<FileDto> {
+    return await lastValueFrom(
+      this.filesClient.send('create_file', { file, dto }),
+    );
+  }
+
+  @Get('/files/')
+  async get_files(
+    @Query('essenceTable') essenceTable: string,
+    @Query('essenceId') essenceId: number,
+  ): Promise<FileDto> {
+    const dto: FileDto = { essenceTable, essenceId };
+    return await lastValueFrom(
+      this.filesClient.send('get_files', {
+        dto,
+      }),
+    );
+  }
+
+  @Delete('/files/')
+  async delete_files(
+    @Query('essenceTable') essenceTable: string,
+    @Query('essenceId') essenceId: number,
+  ): Promise<any> {
+    const dto: FileDto = { essenceTable, essenceId };
+    return await lastValueFrom(
+      this.filesClient.send('delete_files', {
+        dto,
+      }),
+    );
+  }
+  @Delete('/files/:fileName')
+  async delete_file(@Param('fileName') fileName: string): Promise<any> {
+    return await lastValueFrom(
+      this.filesClient.send('delete_file_by_name', {
+        fileName,
+      }),
     );
   }
 }
