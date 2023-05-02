@@ -22,6 +22,7 @@ import { GetCommentaryDto } from './dto/getCommentary.dto';
 import { FileDto } from './dto/file.dto';
 import * as fs from 'fs';
 import { FileInterceptor } from "@nestjs/platform-express";
+import { EndpointsService } from "./endpoints.service";
 
 @Controller('api')
 export class EndpointsController {
@@ -29,6 +30,7 @@ export class EndpointsController {
     @Inject(PROFILES_SERVICE) private profilesClient: ClientProxy,
     @Inject(COMMENTS_SERVICE) private commentsClient: ClientProxy,
     @Inject(FILES_SERVICE) private filesClient: ClientProxy,
+    private readonly endpointsService: EndpointsService,
   ) {}
 
   // Эндпоинт для регистрации нового пользователя
@@ -57,20 +59,27 @@ export class EndpointsController {
   }
 
   // Эндпоинт для изменения данных пользователя по id
+  @UseInterceptors(FileInterceptor('avatar'))
   @Put('/profiles/:id')
   async update(
     @Param('id') id: number,
     @Body() profileDto: ProfileDto,
+    @UploadedFile() avatar = undefined,
   ): Promise<ProfileDto> {
-    return await lastValueFrom(
-      this.profilesClient.send('update_profile', { id, dto: profileDto }),
-    );
+    return await this.endpointsService.updateProfile(id, profileDto, avatar);
   }
 
   @Delete('/profiles/:id')
   async delete(@Param('id') id: number): Promise<ProfileDto> {
     return await lastValueFrom(
       this.profilesClient.send('delete_profile', { id }),
+    );
+  }
+
+  @Get('/profiles/:id')
+  async getProfileById(@Param('id') id: number): Promise<ProfileDto> {
+    return await lastValueFrom(
+      this.profilesClient.send('get_profile_by_id', { id }),
     );
   }
 
@@ -159,4 +168,6 @@ export class EndpointsController {
       }),
     );
   }
+
+
 }
