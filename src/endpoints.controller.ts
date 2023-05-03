@@ -7,8 +7,12 @@ import {
   Param,
   Post,
   Put,
-  Query, UploadedFile, UseInterceptors
-} from "@nestjs/common";
+  Query,
+  Req,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import {
@@ -21,8 +25,9 @@ import { CommentaryDto } from './dto/commentary.dto';
 import { GetCommentaryDto } from './dto/getCommentary.dto';
 import { FileDto } from './dto/file.dto';
 import * as fs from 'fs';
-import { FileInterceptor } from "@nestjs/platform-express";
-import { EndpointsService } from "./endpoints.service";
+import { FileInterceptor } from '@nestjs/platform-express';
+import { EndpointsService } from './endpoints.service';
+import { Request, Response } from 'express';
 
 @Controller('api')
 export class EndpointsController {
@@ -34,20 +39,68 @@ export class EndpointsController {
   ) {}
 
   // Эндпоинт для регистрации нового пользователя
-  // TODO: avatars?
   @Post('/registration')
-  async registration(@Body() profileDto: ProfileDto): Promise<ProfileDto> {
-    return await lastValueFrom(
+  async registration(
+    @Body() profileDto: ProfileDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<any> {
+    const profileData = await lastValueFrom(
       this.profilesClient.send('registration', { dto: profileDto }),
     );
+    res.cookie('refreshToken', profileData.tokens.refreshToken, {
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+    });
+    return profileData;
   }
 
   // Эндпоинт для входа в уже созданную учетную запись
   @Post('/login')
-  async login(@Body() profileDto: ProfileDto): Promise<ProfileDto> {
-    return await lastValueFrom(
+  async login(
+    @Body() profileDto: ProfileDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const profileData = await lastValueFrom(
       this.profilesClient.send('login', { dto: profileDto }),
     );
+    res.cookie('refreshToken', profileData.refreshToken, {
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+    });
+    return profileData;
+  }
+  @Post('/logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const { refreshToken } = req.cookies;
+    const profileData = await lastValueFrom(
+      this.profilesClient.send('logout', { refreshToken }),
+    );
+    res.clearCookie('refreshToken');
+    return profileData;
+  }
+
+  @Post('/refresh')
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refreshToken } = req.cookies;
+    const profileData = await lastValueFrom(
+      this.profilesClient.send('refresh', { refreshToken }),
+    );
+    res.cookie('refreshToken', profileData.refreshToken, {
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+    });
+    return profileData;
+  }
+  @Get('/activate/:link')
+  async activate(
+    @Param('link') activationLink: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.profilesClient.send('activate', { activationLink })
+    return res.redirect(process.env.CLIENT_URL);
   }
 
   // Эндпоинт для получения всех пользователей
@@ -168,6 +221,4 @@ export class EndpointsController {
       }),
     );
   }
-
-
 }
