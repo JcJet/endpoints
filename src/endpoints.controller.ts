@@ -19,15 +19,16 @@ import {
   COMMENTS_SERVICE,
   FILES_SERVICE,
   PROFILES_SERVICE,
+  ROLES_SERVICE,
 } from './constants/services';
 import { ProfileDto } from './dto/profile.dto';
 import { CommentaryDto } from './dto/commentary.dto';
 import { GetCommentaryDto } from './dto/getCommentary.dto';
 import { FileDto } from './dto/file.dto';
-import * as fs from 'fs';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { EndpointsService } from './endpoints.service';
 import { Request, Response } from 'express';
+import { RoleDto } from './dto/role.dto';
 
 @Controller('api')
 export class EndpointsController {
@@ -35,6 +36,7 @@ export class EndpointsController {
     @Inject(PROFILES_SERVICE) private profilesClient: ClientProxy,
     @Inject(COMMENTS_SERVICE) private commentsClient: ClientProxy,
     @Inject(FILES_SERVICE) private filesClient: ClientProxy,
+    @Inject(ROLES_SERVICE) private rolesClient: ClientProxy,
     private readonly endpointsService: EndpointsService,
   ) {}
 
@@ -99,7 +101,7 @@ export class EndpointsController {
     @Param('link') activationLink: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.profilesClient.send('activate', { activationLink })
+    await this.profilesClient.send('activate', { activationLink });
     return res.redirect(process.env.CLIENT_URL);
   }
 
@@ -219,6 +221,28 @@ export class EndpointsController {
       this.filesClient.send('delete_file_by_name', {
         fileName,
       }),
+    );
+  }
+
+  // Эндпоинты ролей
+  @Post('/roles/')
+  async createRole(@Body() dto: RoleDto) {
+    return await lastValueFrom(this.rolesClient.send('createRole', { dto }));
+  }
+  @Get('/roles/')
+  async getAllRoles() {
+    return await lastValueFrom(this.rolesClient.send('getAllRoles', {}));
+  }
+  @Put('/roles/:id')
+  async updateRole(@Body() dto: RoleDto, @Param('id') id: number) {
+    return await lastValueFrom(
+      this.rolesClient.send('updateRole', { id, dto }),
+    );
+  }
+  @Delete('/roles/:value')
+  async deleteRoleByValue(@Param('value') value: string) {
+    return await lastValueFrom(
+      this.rolesClient.send('deleteRoleByValue', { value }),
     );
   }
 }
