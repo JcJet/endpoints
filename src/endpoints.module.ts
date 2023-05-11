@@ -18,7 +18,7 @@ const rmqUrl = process.env.RMQ_URL || 'amqp://localhost:5672';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [configService.get<string>('RABBIT_MQ_URI')],
+            urls: [configService.get<string>('RMQ_URL')],
             queue: 'toProfilesMs',
             queueOptions: {
               durable: false,
@@ -34,7 +34,7 @@ const rmqUrl = process.env.RMQ_URL || 'amqp://localhost:5672';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [configService.get<string>('RABBIT_MQ_URI')],
+            urls: [configService.get<string>('RMQ_URL')],
             queue: 'toCommentsMs',
             queueOptions: {
               durable: false,
@@ -50,7 +50,7 @@ const rmqUrl = process.env.RMQ_URL || 'amqp://localhost:5672';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [configService.get<string>('RABBIT_MQ_URI')],
+            urls: [configService.get<string>('RMQ_URL')],
             queue: 'toFilesMs',
             queueOptions: {
               durable: false,
@@ -66,7 +66,7 @@ const rmqUrl = process.env.RMQ_URL || 'amqp://localhost:5672';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [configService.get<string>('RABBIT_MQ_URI')],
+            urls: [configService.get<string>('RMQ_URL')],
             queue: 'toRolesMs',
             queueOptions: {
               durable: false,
