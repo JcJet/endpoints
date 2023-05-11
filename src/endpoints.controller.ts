@@ -15,12 +15,6 @@ import {
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
-import {
-  COMMENTS_SERVICE,
-  FILES_SERVICE,
-  PROFILES_SERVICE,
-  ROLES_SERVICE,
-} from './constants/services';
 import { ProfileDto } from './dto/profile.dto';
 import { CommentaryDto } from './dto/commentary.dto';
 import { GetCommentaryDto } from './dto/getCommentary.dto';
@@ -29,14 +23,15 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { EndpointsService } from './endpoints.service';
 import { Request, Response } from 'express';
 import { RoleDto } from './dto/role.dto';
+import { UpdateUserRoleDto } from "./dto/updateUserRole.dto";
 
 @Controller('api')
 export class EndpointsController {
   constructor(
-    @Inject(PROFILES_SERVICE) private profilesClient: ClientProxy,
-    @Inject(COMMENTS_SERVICE) private commentsClient: ClientProxy,
-    @Inject(FILES_SERVICE) private filesClient: ClientProxy,
-    @Inject(ROLES_SERVICE) private rolesClient: ClientProxy,
+    @Inject('TO_PROFILES_MS') private toProfilesProxy: ClientProxy,
+    @Inject('TO_COMMENTS_MS') private toCommentsProxy: ClientProxy,
+    @Inject('TO_FILES_MS') private toFilesProxy: ClientProxy,
+    @Inject('TO_ROLES_MS') private toRolesProxy: ClientProxy,
     private readonly endpointsService: EndpointsService,
   ) {}
 
@@ -47,7 +42,7 @@ export class EndpointsController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<any> {
     const profileData = await lastValueFrom(
-      this.profilesClient.send('registration', { dto: profileDto }),
+      this.toProfilesProxy.send('registration', { dto: profileDto }),
     );
     res.cookie('refreshToken', profileData.tokens.refreshToken, {
       maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -63,7 +58,7 @@ export class EndpointsController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const profileData = await lastValueFrom(
-      this.profilesClient.send('login', { dto: profileDto }),
+      this.toProfilesProxy.send('login', { dto: profileDto }),
     );
     res.cookie('refreshToken', profileData.refreshToken, {
       maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -75,7 +70,7 @@ export class EndpointsController {
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { refreshToken } = req.cookies;
     const profileData = await lastValueFrom(
-      this.profilesClient.send('logout', { refreshToken }),
+      this.toProfilesProxy.send('logout', { refreshToken }),
     );
     res.clearCookie('refreshToken');
     return profileData;
@@ -88,7 +83,7 @@ export class EndpointsController {
   ) {
     const { refreshToken } = req.cookies;
     const profileData = await lastValueFrom(
-      this.profilesClient.send('refresh', { refreshToken }),
+      this.toProfilesProxy.send('refresh', { refreshToken }),
     );
     res.cookie('refreshToken', profileData.refreshToken, {
       maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -101,7 +96,7 @@ export class EndpointsController {
     @Param('link') activationLink: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.profilesClient.send('activate', { activationLink });
+    await this.toProfilesProxy.send('activate', { activationLink });
     return res.redirect(process.env.CLIENT_URL);
   }
 
@@ -109,7 +104,7 @@ export class EndpointsController {
   @Get('/profiles')
   async getAllUsers(): Promise<ProfileDto[]> {
     return await lastValueFrom(
-      this.profilesClient.send('get_all_profiles', {}),
+      this.toProfilesProxy.send('getAllProfiles', {}),
     );
   }
 
@@ -127,24 +122,22 @@ export class EndpointsController {
   @Delete('/profiles/:id')
   async delete(@Param('id') id: number): Promise<ProfileDto> {
     return await lastValueFrom(
-      this.profilesClient.send('delete_profile', { id }),
+      this.toProfilesProxy.send('deleteProfile', { id }),
     );
   }
 
   @Get('/profiles/:id')
   async getProfileById(@Param('id') id: number): Promise<ProfileDto> {
     return await lastValueFrom(
-      this.profilesClient.send('get_profile_by_id', { id }),
+      this.toProfilesProxy.send('getProfileById', { id }),
     );
   }
 
   // Эндпоинты комментария
-  // TODO: контроль доступа: только свои или админ
-  // TODO: id пользователя = текущий
   @Post('/comments')
   async create_comment(@Body() dto: CommentaryDto): Promise<CommentaryDto> {
     return await lastValueFrom(
-      this.commentsClient.send('create_comment', { dto }),
+      this.toCommentsProxy.send('createComment', { dto }),
     );
   }
 
@@ -155,7 +148,7 @@ export class EndpointsController {
   ): Promise<CommentaryDto> {
     const dto: GetCommentaryDto = { essenceTable, essenceId };
     return await lastValueFrom(
-      this.commentsClient.send('get_comments', {
+      this.toCommentsProxy.send('getComments', {
         dto,
       }),
     );
@@ -167,14 +160,14 @@ export class EndpointsController {
     @Body() dto: CommentaryDto,
   ): Promise<CommentaryDto> {
     return await lastValueFrom(
-      this.commentsClient.send('edit_comment', { id, dto }),
+      this.toCommentsProxy.send('editComment', { id, dto }),
     );
   }
 
   @Delete('/comments/:id')
   async delete_comment(@Param('id') id: number): Promise<CommentaryDto> {
     return await lastValueFrom(
-      this.commentsClient.send('delete_comment', { id }),
+      this.toCommentsProxy.send('deleteComment', { id }),
     );
   }
 
@@ -186,7 +179,7 @@ export class EndpointsController {
     @UploadedFile() file = undefined,
   ): Promise<FileDto> {
     return await lastValueFrom(
-      this.filesClient.send('create_file', { file, dto }),
+      this.toFilesProxy.send('createFile', { file, dto }),
     );
   }
 
@@ -197,7 +190,7 @@ export class EndpointsController {
   ): Promise<FileDto> {
     const dto: FileDto = { essenceTable, essenceId };
     return await lastValueFrom(
-      this.filesClient.send('get_files', {
+      this.toFilesProxy.send('getFiles', {
         dto,
       }),
     );
@@ -210,7 +203,7 @@ export class EndpointsController {
   ): Promise<any> {
     const dto: FileDto = { essenceTable, essenceId };
     return await lastValueFrom(
-      this.filesClient.send('delete_files', {
+      this.toFilesProxy.send('deleteFiles', {
         dto,
       }),
     );
@@ -218,7 +211,7 @@ export class EndpointsController {
   @Delete('/files/:fileName')
   async delete_file(@Param('fileName') fileName: string): Promise<any> {
     return await lastValueFrom(
-      this.filesClient.send('delete_file_by_name', {
+      this.toFilesProxy.send('deleteFileByName', {
         fileName,
       }),
     );
@@ -227,22 +220,50 @@ export class EndpointsController {
   // Эндпоинты ролей
   @Post('/roles/')
   async createRole(@Body() dto: RoleDto) {
-    return await lastValueFrom(this.rolesClient.send('createRole', { dto }));
+    return await lastValueFrom(this.toRolesProxy.send('createRole', { dto }));
   }
   @Get('/roles/')
   async getAllRoles() {
-    return await lastValueFrom(this.rolesClient.send('getAllRoles', {}));
+    return await lastValueFrom(this.toRolesProxy.send('getAllRoles', {}));
+  }
+  @Get('/roles/:id')
+  async getRoleById(@Param('id') id: number) {
+    return await lastValueFrom(this.toRolesProxy.send('getRoleById', { id }));
   }
   @Put('/roles/:id')
   async updateRole(@Body() dto: RoleDto, @Param('id') id: number) {
     return await lastValueFrom(
-      this.rolesClient.send('updateRole', { id, dto }),
+      this.toRolesProxy.send('updateRole', { id, dto }),
     );
   }
   @Delete('/roles/:value')
   async deleteRoleByValue(@Param('value') value: string) {
     return await lastValueFrom(
-      this.rolesClient.send('deleteRoleByValue', { value }),
+      this.toRolesProxy.send('deleteRoleByValue', { value }),
+    );
+  }
+  @Post('/roles/user/:userId')
+  async addUserRoles(
+    @Body() roles: string[],
+    @Param('userId') userId: number,
+  ) {
+    return await lastValueFrom(
+      this.toRolesProxy.send('addUserRoles', { dto: { roles, userId } }),
+    );
+  }
+  @Delete('/roles/user/:userId')
+  async deleteUserRoles(
+    @Body() roles: string[],
+    @Param('userId') userId: number,
+  ) {
+    return await lastValueFrom(
+      this.toRolesProxy.send('deleteUserRoles', { dto: { roles, userId } }),
+    );
+  }
+  @Get('/roles/user/:userId')
+  async getUserRoles(@Param('userId') userId: number) {
+    return await lastValueFrom(
+      this.toRolesProxy.send('getUserRoles', { userId }),
     );
   }
 }
