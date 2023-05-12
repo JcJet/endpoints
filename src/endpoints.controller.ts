@@ -23,7 +23,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { EndpointsService } from './endpoints.service';
 import { Request, Response } from 'express';
 import { RoleDto } from './dto/role.dto';
-import { UpdateUserRoleDto } from "./dto/updateUserRole.dto";
+import { UpdateUserRoleDto } from './dto/updateUserRole.dto';
 
 @Controller('api')
 export class EndpointsController {
@@ -103,9 +103,7 @@ export class EndpointsController {
   // Эндпоинт для получения всех пользователей
   @Get('/profiles')
   async getAllUsers(): Promise<ProfileDto[]> {
-    return await lastValueFrom(
-      this.toProfilesProxy.send('getAllProfiles', {}),
-    );
+    return await lastValueFrom(this.toProfilesProxy.send('getAllProfiles', {}));
   }
 
   // Эндпоинт для изменения данных пользователя по id
@@ -170,6 +168,21 @@ export class EndpointsController {
   async delete_comment(@Param('id') id: number): Promise<CommentaryDto> {
     return await lastValueFrom(
       this.toCommentsProxy.send('deleteComment', { id }),
+    );
+  }
+  @Delete('/comments/')
+  async deleteCommentsFromEssence(
+    @Query('essenceTable') essenceTable: string,
+    @Query('essenceId') essenceId: number,
+  ) {
+    const dto: { essenceId: number; essenceTable: string } = {
+      essenceTable,
+      essenceId,
+    };
+    return await lastValueFrom(
+      this.toCommentsProxy.send('deleteCommentsFromEssence', {
+        dto,
+      }),
     );
   }
 
@@ -245,10 +258,7 @@ export class EndpointsController {
     );
   }
   @Post('/roles/user/:userId')
-  async addUserRoles(
-    @Body() roles: string[],
-    @Param('userId') userId: number,
-  ) {
+  async addUserRoles(@Body() roles: string[], @Param('userId') userId: number) {
     return await lastValueFrom(
       this.toRolesProxy.send('addUserRoles', { dto: { roles, userId } }),
     );
