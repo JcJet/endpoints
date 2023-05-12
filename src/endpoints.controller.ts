@@ -145,10 +145,12 @@ export class EndpointsController {
   async get_comments(
     @Query('essenceTable') essenceTable: string,
     @Query('essenceId') essenceId: number,
+    @Query('nestedComments') nestedComments: boolean,
   ): Promise<CommentaryDto> {
     const dto: GetCommentaryDto = { essenceTable, essenceId };
+    const pattern: string = nestedComments ? 'getCommentsTree' : 'getComments';
     return await lastValueFrom(
-      this.toCommentsProxy.send('getComments', {
+      this.toCommentsProxy.send(pattern, {
         dto,
       }),
     );
